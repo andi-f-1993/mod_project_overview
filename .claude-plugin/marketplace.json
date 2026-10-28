@@ -1,0 +1,11 @@
+{
+  "name": "mod-project-overview",
+  "owner": { "name": "Andreas" },
+  "plugins": [
+    {
+      "name": "project-overview",
+      "source": "./",
+      "description": "Snapshot of a project's threads for the Project Overview page, plus a needs-you line above the prompt"
+    }
+  ]
+}
