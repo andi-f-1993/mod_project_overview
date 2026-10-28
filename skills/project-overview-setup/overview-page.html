@@ -1,0 +1,419 @@
+<title>Project Overview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: one narrow column, a folder tree; state is carried by colour on each row and roll-up chips on each folder */
+  :root {
+    --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2130; --muted:#5f6878; --line:#e1e4ea; --hover:#eef1f5; --accent:#2a5d8f;
+    --need:#b86e00; --need-bg:#fdf1de; --review:#2a6fc0; --review-bg:#e7f0fb; --work:#1f8a55; --work-bg:#e3f4ea;
+    --done:#8a93a3; --fail:#c0392f; --fail-bg:#fbe9e7;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#11141a; --panel:#181c24; --fg:#e5e8ee; --muted:#9aa2b2; --line:#2a303c; --hover:#1f2530; --accent:#7fb0e0;
+    --need:#f0a640; --need-bg:#3a2a12; --review:#7fb0f0; --review-bg:#18283c; --work:#5cc98f; --work-bg:#16301f;
+    --done:#7a8293; --fail:#f07b70; --fail-bg:#3a1a17; color-scheme:dark } }
+  :root[data-theme="dark"] {
+    --bg:#11141a; --panel:#181c24; --fg:#e5e8ee; --muted:#9aa2b2; --line:#2a303c; --hover:#1f2530; --accent:#7fb0e0;
+    --need:#f0a640; --need-bg:#3a2a12; --review:#7fb0f0; --review-bg:#18283c; --work:#5cc98f; --work-bg:#16301f;
+    --done:#7a8293; --fail:#f07b70; --fail-bg:#3a1a17; color-scheme:dark }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--fg); font-family:var(--sans); font-size:14px; padding-block:16px 40px;
+         padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+  main { max-width:760px; margin:0 auto; display:grid; gap:14px; }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
+  h1 { font-size:18px; font-weight:600; margin:0; flex:1 1 auto; text-wrap:balance; }
+  .meta { color:var(--muted); font-size:12px; font-family:var(--mono); }
+  button, select, input { font:inherit; color:inherit; }
+  .btn { border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:5px 10px; cursor:pointer; font-size:13px; }
+  .btn:hover { background:var(--hover); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--panel); }
+  .btn:focus-visible, .row:focus-visible, .fhead:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .legend { display:flex; flex-wrap:wrap; gap:6px 14px; color:var(--muted); font-size:12px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:9px; height:9px; border-radius:50%; flex:none; background:var(--done); }
+  .s-blocked .dot, .dot.s-blocked { background:var(--need); box-shadow:0 0 0 3px var(--need-bg); }
+  .s-review_ready .dot, .dot.s-review_ready { background:var(--review); }
+  .s-working .dot, .dot.s-working { background:var(--work); animation:pulse 1.6s ease-in-out infinite; }
+  .s-failed .dot, .dot.s-failed { background:var(--fail); }
+  @keyframes pulse { 50% { opacity:.35; } }
+  @media (prefers-reduced-motion: reduce) { .s-working .dot, .dot.s-working { animation:none; } }
+  .notice { border:1px solid var(--line); background:var(--panel); border-radius:8px; padding:12px 14px; color:var(--muted); line-height:1.5; }
+  .tree { display:grid; gap:10px; }
+  .folder { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .folder.has-need { border-color:var(--need); }
+  .fhead { display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; user-select:none; }
+  .fhead:hover { background:var(--hover); }
+  .caret { width:12px; color:var(--muted); transition:transform .15s; flex:none; }
+  .folder.collapsed .caret { transform:rotate(-90deg); }
+  .fname { font-weight:600; flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .chip { font-size:11px; font-weight:600; padding:2px 7px; border-radius:999px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .chip.need { background:var(--need-bg); color:var(--need); }
+  .chip.review { background:var(--review-bg); color:var(--review); }
+  .chip.work { background:var(--work-bg); color:var(--work); }
+  .chip.total { color:var(--muted); font-weight:500; }
+  .folder.collapsed .rows { display:none; }
+  .rows { border-top:1px solid var(--line); }
+  .item + .item { border-top:1px solid var(--line); }
+  .row { display:flex; align-items:center; gap:10px; padding:9px 12px 9px 14px; cursor:pointer; position:relative; }
+  .row:hover { background:var(--hover); }
+  .item.s-blocked .row { background:var(--need-bg); }
+  .item.s-blocked .row::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--need); }
+  .item.s-review_ready .row::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--review); }
+  .title { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item.s-blocked .title { font-weight:600; }
+  .item.quiet .title { color:var(--muted); }
+  .item.obsolete .title { text-decoration:line-through; color:var(--done); }
+  .tag { font-size:11px; padding:1px 6px; border-radius:4px; border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+  .tag.stale { border-color:var(--need); color:var(--need); }
+  .age { font-family:var(--mono); font-size:12px; color:var(--muted); width:3.2em; text-align:right; flex:none; }
+  .detail { padding:4px 14px 14px 33px; display:grid; gap:10px; }
+  .detail[hidden] { display:none !important; }
+  .needs { color:var(--need); font-weight:600; }
+  .label { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+  .text { line-height:1.5; overflow-wrap:anywhere; }
+  .checklist { font-family:var(--mono); font-size:12px; white-space:pre-wrap; line-height:1.55; color:var(--muted); max-height:12em; overflow:auto; margin:0; }
+  .outputs { display:flex; flex-wrap:wrap; gap:6px; }
+  .outputs a, .open { color:var(--accent); text-decoration:none; font-size:13px; }
+  .outputs a { border:1px solid var(--line); border-radius:6px; padding:3px 8px; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .actions select, .actions input { border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:4px 8px; font-size:13px; max-width:100%; }
+  .handover { border:1px dashed var(--need); border-radius:8px; padding:10px; display:grid; gap:8px; }
+  .handover textarea { width:100%; min-height:9em; font:12px/1.5 var(--mono); border:1px solid var(--line); border-radius:6px; padding:8px; background:var(--bg); color:var(--fg); resize:vertical; }
+  .tip { position:fixed; z-index:20; width:min(360px, calc(100vw - 32px)); background:var(--panel); border:1px solid var(--line); border-radius:10px;
+         box-shadow:0 8px 24px rgba(0,0,0,.18); padding:12px 14px; display:grid; gap:8px; pointer-events:none; font-size:13px; }
+  .tip[hidden] { display:none !important; }
+  .editbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .editbar input { border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:5px 8px; }
+  .fedit { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .fedit input { border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:3px 6px; font-weight:600; min-width:0; width:14em; max-width:100%; }
+</style>
+
+<main>
+  <header>
+    <h1 id="heading">Project Overview</h1>
+    <span class="meta" id="updated">Loading…</span>
+    <button class="btn" id="refresh" type="button">Refresh</button>
+    <button class="btn" id="editToggle" type="button">Edit folders</button>
+  </header>
+  <div class="legend" aria-label="Colour key">
+    <span><i class="dot s-blocked"></i>Needs you</span>
+    <span><i class="dot s-review_ready"></i>Ready for review</span>
+    <span><i class="dot s-working"></i>Claude working</span>
+    <span><i class="dot s-failed"></i>Failed</span>
+    <span><i class="dot"></i>Done</span>
+  </div>
+  <div class="editbar" id="editbar" hidden>
+    <input id="newFolder" type="text" placeholder="New folder name" aria-label="New folder name">
+    <button class="btn" id="addFolder" type="button">Add folder</button>
+    <span class="meta">Rename a folder in its header. Deleting a folder moves its threads to Unsorted.</span>
+  </div>
+  <div id="notice" class="notice" hidden></div>
+  <div class="tree" id="tree"></div>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const PROJECT = "__PROJECT_ID__";
+const SNAPSHOT_PATHS = [".project-overview/snapshot.json", "/.project-overview/snapshot.json", ".thread-overview/snapshot.json", "/.thread-overview/snapshot.json"];
+const LAYOUT_DOC = "layout/main";
+const STALE_DAYS = 7;
+const UNSORTED = "unsorted";
+
+let snapshot = null;
+let layout = { folders: [], placement: {}, names: {}, obsolete: {}, after: {} };
+let layoutRef = null;
+let editing = false;
+let open = new Set();
+let handoverOpen = new Set();
+let collapsed = {};
+try { collapsed = JSON.parse(localStorage.getItem("collapsed") || "{}"); } catch { collapsed = {}; }
+
+const $ = s => document.querySelector(s);
+const esc = s => { const d = document.createElement("span"); d.textContent = String(s ?? ""); return d.innerHTML; };
+const threadLink = t => `https://claude.ai/code/project/${PROJECT}?thread=${encodeURIComponent(t.threadId)}`;
+const days = iso => iso ? (Date.now() - Date.parse(iso)) / 86400000 : 0;
+function ago(iso) {
+  if (!iso) return "";
+  const m = Math.max(0, (Date.now() - Date.parse(iso)) / 60000);
+  if (m < 60) return Math.round(m) + "m";
+  if (m < 1440) return Math.round(m / 60) + "h";
+  return Math.round(m / 1440) + "d";
+}
+function nameOf(t) { return layout.names[t.threadId] || t.title; }
+function isObsolete(t) { return !!layout.obsolete[t.threadId] || /^\[obsolete\]/i.test(t.title); }
+function isStale(t) { return !t.isResolved && !isObsolete(t) && t.state !== "working" && days(t.lastActivityAt) > STALE_DAYS; }
+const RANK = { blocked: 0, review_ready: 1, working: 2, failed: 3 };
+function rank(t) { if (isObsolete(t)) return 9; return RANK[t.state] ?? (t.isResolved ? 5 : 4); }
+
+// A new thread whose title continues another ("X (continued)") lands in that thread's folder, right after it.
+function placementOf(t) {
+  if (layout.placement[t.threadId]) return layout.placement[t.threadId];
+  const base = t.title.replace(/\s*\((continued|cont\.?|part \d+)\)\s*$/i, "").trim();
+  if (base !== t.title && snapshot) {
+    const parent = snapshot.threads.find(o => o.title === base);
+    if (parent && layout.placement[parent.threadId]) return layout.placement[parent.threadId];
+  }
+  return UNSORTED;
+}
+function parentOf(t) {
+  if (layout.after[t.threadId]) return layout.after[t.threadId];
+  const base = t.title.replace(/\s*\((continued|cont\.?|part \d+)\)\s*$/i, "").trim();
+  if (base === t.title || !snapshot) return null;
+  const parent = snapshot.threads.find(o => o.title === base);
+  return parent ? parent.threadId : null;
+}
+function ordered(list) {
+  const sorted = [...list].sort((a, b) => rank(a) - rank(b) || Date.parse(b.lastActivityAt || 0) - Date.parse(a.lastActivityAt || 0));
+  // Keep a continuation directly below the thread it continues.
+  const out = [];
+  const kids = new Map();
+  for (const t of sorted) { const p = parentOf(t); if (p && sorted.some(o => o.threadId === p)) { (kids.get(p) || kids.set(p, []).get(p)).push(t); } }
+  const isKid = new Set([...kids.values()].flat().map(t => t.threadId));
+  const add = t => { out.push(t); (kids.get(t.threadId) || []).forEach(add); };
+  sorted.filter(t => !isKid.has(t.threadId)).forEach(add);
+  return out;
+}
+
+function chipsFor(list) {
+  const live = list.filter(t => !isObsolete(t));
+  const n = s => live.filter(t => t.state === s).length;
+  const parts = [];
+  if (n("blocked")) parts.push(`<span class="chip need">${n("blocked")} need${n("blocked") === 1 ? "s" : ""} you</span>`);
+  if (n("review_ready")) parts.push(`<span class="chip review">${n("review_ready")} to review</span>`);
+  if (n("working")) parts.push(`<span class="chip work">${n("working")} running</span>`);
+  parts.push(`<span class="chip total">${list.length}</span>`);
+  return parts.join("");
+}
+
+function detailHtml(t, inTip) {
+  const parts = [];
+  if (t.needsAction) parts.push(`<div class="text needs">${esc(t.needsAction)}</div>`);
+  if (t.recentAction) parts.push(`<div><div class="label">Latest</div><div class="text">${esc(t.recentAction)}</div></div>`);
+  if (!t.needsAction && !t.recentAction) parts.push(`<div class="text meta">No summary yet. It appears after the thread's next reply.</div>`);
+  if (t.checklist && !inTip) parts.push(`<div><div class="label">Checklist</div><pre class="checklist">${esc(t.checklist)}</pre></div>`);
+  if (t.outputs && t.outputs.length) {
+    parts.push(`<div><div class="label">Outputs</div><div class="outputs">${t.outputs.map(o =>
+      inTip ? `<span class="tag">${esc(o.title || "Output")}</span>` : `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title || "Output")}</a>`).join("")}</div></div>`);
+  }
+  return parts.join("");
+}
+
+function folderOptions(current) {
+  const opts = [{ id: UNSORTED, name: "Unsorted" }, ...layout.folders];
+  return opts.map(f => `<option value="${esc(f.id)}"${f.id === current ? " selected" : ""}>${esc(f.name)}</option>`).join("");
+}
+
+function handoverText(t) {
+  const slug = nameOf(t).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "thread";
+  return `Please hand over the thread "${nameOf(t)}" (${threadLink(t)}):
+1. Ask that thread to write a handover document to handover/${slug}.md: goal, decisions so far, current state, open items, key files and outputs.
+2. Start a new thread called "${nameOf(t)} (continued)" from that document.
+3. Once the new thread is running, rename the old one to "[obsolete] ${nameOf(t)}" and resolve it.`;
+}
+
+function itemHtml(t, folderId) {
+  const cls = ["item", "s-" + t.state];
+  if (isObsolete(t)) cls.push("obsolete");
+  if (t.isResolved || t.state === "done") cls.push("quiet");
+  const isOpen = open.has(t.threadId);
+  const tags = [];
+  if (isObsolete(t)) tags.push(`<span class="tag">obsolete</span>`);
+  else if (isStale(t)) tags.push(`<span class="tag stale">idle ${Math.floor(days(t.lastActivityAt))}d</span>`);
+  const ho = handoverOpen.has(t.threadId);
+  return `<div class="${cls.join(" ")}" data-id="${esc(t.threadId)}">
+    <div class="row" tabindex="0" role="button" aria-expanded="${isOpen}" data-act="toggle">
+      <i class="dot"></i><span class="title">${esc(nameOf(t))}</span>${tags.join("")}<span class="age" title="Last activity">${ago(t.lastActivityAt)}</span>
+    </div>
+    <div class="detail"${isOpen ? "" : " hidden"}>
+      ${detailHtml(t, false)}
+      <div class="actions">
+        <a class="open" href="${esc(threadLink(t))}" target="_blank" rel="noopener">Open thread ↗</a>
+        <label class="meta" for="mv-${esc(t.threadId)}">Folder</label>
+        <select id="mv-${esc(t.threadId)}" data-act="move">${folderOptions(folderId)}</select>
+        <input id="nm-${esc(t.threadId)}" type="text" value="${esc(layout.names[t.threadId] || "")}" placeholder="Display name" aria-label="Display name" data-act="name">
+      </div>
+      <div class="actions">
+        <button class="btn" type="button" data-act="handover">${ho ? "Hide handover" : "Prepare handover"}</button>
+        <button class="btn" type="button" data-act="obsolete">${layout.obsolete[t.threadId] ? "Not obsolete" : "Mark obsolete"}</button>
+      </div>
+      ${ho ? `<div class="handover">
+        <div class="text">Paste this into the project chat to confirm the handover. Nothing happens until you send it.</div>
+        <textarea id="ho-${esc(t.threadId)}" readonly>${esc(handoverText(t))}</textarea>
+        <div class="actions"><button class="btn primary" type="button" data-act="copy">Copy request</button><span class="meta" id="hs-${esc(t.threadId)}"></span></div>
+      </div>` : ""}
+    </div>
+  </div>`;
+}
+
+function render() {
+  const tree = $("#tree");
+  if (!snapshot) { tree.innerHTML = ""; return; }
+  const groups = new Map([[UNSORTED, []], ...layout.folders.map(f => [f.id, []])]);
+  for (const t of snapshot.threads) {
+    const f = placementOf(t);
+    (groups.get(f) || groups.get(UNSORTED)).push(t);
+  }
+  const folders = [{ id: UNSORTED, name: "Unsorted" }, ...layout.folders];
+  tree.innerHTML = folders.filter(f => f.id !== UNSORTED || groups.get(UNSORTED).length || editing).map(f => {
+    const list = ordered(groups.get(f.id) || []);
+    const need = list.some(t => t.state === "blocked" && !isObsolete(t));
+    const isCollapsed = collapsed[f.id] ?? (f.id !== UNSORTED && !need && list.every(t => t.isResolved || isObsolete(t)));
+    const nameHtml = editing && f.id !== UNSORTED
+      ? `<span class="fedit"><input id="fn-${esc(f.id)}" type="text" value="${esc(f.name)}" aria-label="Folder name" data-act="rename-folder"><button class="btn" type="button" data-act="delete-folder">Delete</button></span>`
+      : `<span class="fname">${esc(f.name)}</span>`;
+    return `<section class="folder${isCollapsed ? " collapsed" : ""}${need ? " has-need" : ""}" data-folder="${esc(f.id)}">
+      <div class="fhead" tabindex="0" role="button" aria-expanded="${!isCollapsed}" data-act="fold">
+        <svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        ${nameHtml}<span class="chips">${chipsFor(list)}</span>
+      </div>
+      <div class="rows">${list.map(t => itemHtml(t, f.id)).join("") || `<div class="row meta">No threads here yet.</div>`}</div>
+    </section>`;
+  }).join("");
+  const total = snapshot.threads.filter(t => t.state === "blocked" && !isObsolete(t)).length;
+  document.title = total ? `(${total}) Project Overview` : "Project Overview";
+}
+
+function showNotice(html) { const n = $("#notice"); n.innerHTML = html; n.hidden = !html; }
+
+async function saveLayout(patch) {
+  layout = { ...layout, ...patch };
+  render();
+  if (!layoutRef) return;
+  try { await layoutRef.set(layout); }
+  catch (e) { showNotice(`Your change shows here but was not saved (${esc(e && e.code)}). Reload the page and try again.`); }
+}
+
+// Events: one delegated handler for the whole tree.
+$("#tree").addEventListener("click", async ev => {
+  const el = ev.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  const item = el.closest(".item");
+  const id = item && item.dataset.id;
+  const folder = el.closest(".folder") && el.closest(".folder").dataset.folder;
+  if (act === "fold" && !ev.target.closest("input,button")) {
+    const sec = el.closest(".folder");
+    collapsed[folder] = !sec.classList.contains("collapsed");
+    try { localStorage.setItem("collapsed", JSON.stringify(collapsed)); } catch {}
+    render();
+  } else if (act === "toggle") {
+    open.has(id) ? open.delete(id) : open.add(id);
+    hideTip(); render();
+  } else if (act === "handover") {
+    handoverOpen.has(id) ? handoverOpen.delete(id) : handoverOpen.add(id);
+    render();
+  } else if (act === "copy") {
+    const ta = document.getElementById("ho-" + id);
+    const status = document.getElementById("hs-" + id);
+    try { await navigator.clipboard.writeText(ta.value); status.textContent = "Copied. Paste it into the project chat."; }
+    catch { ta.focus(); ta.select(); status.textContent = "Text selected. Copy it with your keyboard or the share menu."; }
+  } else if (act === "obsolete") {
+    const obsolete = { ...layout.obsolete };
+    obsolete[id] ? delete obsolete[id] : obsolete[id] = true;
+    saveLayout({ obsolete });
+  } else if (act === "delete-folder") {
+    const placement = Object.fromEntries(Object.entries(layout.placement).filter(([, f]) => f !== folder));
+    saveLayout({ folders: layout.folders.filter(f => f.id !== folder), placement });
+  }
+});
+$("#tree").addEventListener("keydown", ev => {
+  if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches(".row,.fhead")) { ev.preventDefault(); ev.target.click(); }
+});
+$("#tree").addEventListener("change", ev => {
+  const el = ev.target;
+  const item = el.closest(".item");
+  const id = item && item.dataset.id;
+  if (el.dataset.act === "move") {
+    saveLayout({ placement: { ...layout.placement, [id]: el.value } });
+  } else if (el.dataset.act === "name") {
+    const names = { ...layout.names };
+    el.value.trim() ? names[id] = el.value.trim() : delete names[id];
+    saveLayout({ names });
+  } else if (el.dataset.act === "rename-folder") {
+    const fid = el.closest(".folder").dataset.folder;
+    const name = el.value.trim();
+    if (name) saveLayout({ folders: layout.folders.map(f => f.id === fid ? { ...f, name } : f) });
+  }
+});
+$("#editToggle").addEventListener("click", () => {
+  editing = !editing;
+  $("#editbar").hidden = !editing;
+  $("#editToggle").textContent = editing ? "Done editing" : "Edit folders";
+  render();
+});
+$("#addFolder").addEventListener("click", () => {
+  const name = $("#newFolder").value.trim();
+  if (!name) return;
+  $("#newFolder").value = "";
+  saveLayout({ folders: [...layout.folders, { id: "f" + Date.now().toString(36), name }] });
+});
+$("#refresh").addEventListener("click", () => loadSnapshot());
+
+// Hover summary on devices with a pointer; tap opens the inline detail everywhere.
+const tip = $("#tip");
+function hideTip() { tip.hidden = true; }
+if (window.matchMedia("(hover: hover)").matches) {
+  $("#tree").addEventListener("mouseover", ev => {
+    const row = ev.target.closest(".row[data-act=toggle]");
+    if (!row || !snapshot) return;
+    const id = row.closest(".item").dataset.id;
+    if (open.has(id)) { hideTip(); return; }
+    const t = snapshot.threads.find(x => x.threadId === id);
+    if (!t) return;
+    tip.innerHTML = `<strong>${esc(nameOf(t))}</strong>${detailHtml(t, true)}`;
+    const r = row.getBoundingClientRect();
+    tip.hidden = false;
+    const h = tip.offsetHeight;
+    const top = r.bottom + 6 + h < innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6);
+    tip.style.top = top + "px";
+    tip.style.left = Math.min(r.left + 24, innerWidth - tip.offsetWidth - 16) + "px";
+  });
+  $("#tree").addEventListener("mouseleave", hideTip);
+  $("#tree").addEventListener("mouseout", ev => { if (!ev.relatedTarget || !ev.relatedTarget.closest || !ev.relatedTarget.closest(".row")) hideTip(); });
+}
+
+let files = null;
+async function loadSnapshot() {
+  if (!files) return;
+  let lastErr = null;
+  for (const path of SNAPSHOT_PATHS) {
+    try {
+      const r = await files.read(path);
+      const data = JSON.parse(new TextDecoder().decode(r.bytes));
+      if (!Array.isArray(data.threads)) throw { code: "bad_snapshot" };
+      snapshot = data;
+      $("#updated").textContent = "Updated " + ago(data.writtenAt) + " ago";
+      showNotice("");
+      render();
+      return;
+    } catch (e) { lastErr = e; }
+  }
+  if (lastErr && lastErr.code === "not_found") {
+    showNotice("No snapshot yet. It is written by the Project Overview mod each time a thread in this project finishes a reply. Send any message in a thread, then press Refresh.");
+  } else {
+    showNotice(`Could not read the thread snapshot (${esc(lastErr && lastErr.code)}). Press Refresh to try again.`);
+  }
+  $("#updated").textContent = "";
+}
+
+async function start() {
+  if (!window.claude) { showNotice("Open this page on claude.ai to see your threads."); return; }
+  files = await window.claude.use("files");
+  if (!files) { showNotice("This view can't read the project's files. Open the page on claude.ai while signed in."); }
+  const db = await window.claude.use("db");
+  if (db) {
+    layoutRef = db.doc(LAYOUT_DOC);
+    layoutRef.onSnapshot(snap => {
+      const d = snap.exists ? snap.data() : null;
+      if (d) layout = { folders: [], placement: {}, names: {}, obsolete: {}, after: {}, ...d };
+      render();
+    }, () => showNotice("Folder layout could not be loaded. Changes will not be saved until you reload."));
+  }
+  await loadSnapshot();
+  setInterval(() => { if (document.visibilityState === "visible") loadSnapshot(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadSnapshot(); });
+}
+start();
+</script>

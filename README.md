@@ -6,9 +6,15 @@ Where the app draws it, the mod also shows one line above the prompt: how many t
 
 It reads thread data through the project's own tools and makes no changes to threads. It costs no extra model calls.
 
+## Use it in a project
+
+The snapshot is written in every project once the mod is on your account. The page is one per project: in a project, ask Claude to "set up the project overview". The included `project-overview-setup` skill publishes the page for that project and suggests a first folder grouping.
+
 ## Install
 
-In the Claude desktop app: click + next to the prompt box, then Plugins, Add marketplace with `andi-f-1993/mod_project_overview`, then Add plugin.
+For project threads (they run in the cloud), save the mod to your account as an uploaded plugin, so it syncs to every session.
+
+For local Claude Code sessions in the desktop app: click + next to the prompt box, then Plugins, Add marketplace with `andi-f-1993/mod_project_overview`, then Add plugin.
 
 In a terminal session:
 

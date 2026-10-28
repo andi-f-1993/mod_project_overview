@@ -1,8 +1,10 @@
 {
   "name": "project-overview",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Keeps a snapshot of a project's threads (state, latest action, what needs you, outputs) for the Project Overview page, and shows who needs you above the prompt",
-  "author": { "name": "Andreas" },
+  "author": {
+    "name": "Andreas"
+  },
   "license": "MIT",
   "types": "./types/index.d.ts"
 }
